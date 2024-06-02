@@ -3,6 +3,7 @@
 #include "executionprovider_p.h"
 
 #include <flowonnx/environment.h>
+#include <flowonnx/logger.h>
 
 namespace fs = std::filesystem;
 
@@ -16,7 +17,9 @@ namespace flowonnx {
     Session::Session() : _impl(std::make_unique<Impl>()) {
     }
 
-    Session::~Session() = default;
+    Session::~Session() {
+        close();
+    }
 
     Session::Session(Session &&other) noexcept {
         std::swap(_impl, other._impl);
@@ -33,9 +36,11 @@ namespace flowonnx {
     bool Session::open(const fs::path &path, std::string *errorMessage) {
         auto &impl = *_impl;
 
+        FLOWONNX_DEBUG("Session - Try open " + path.string());
         fs::path canonicalPath;
         try {
             canonicalPath = fs::canonical(path);
+            FLOWONNX_DEBUG("Session - The canonical path is " + canonicalPath.string());
         } catch (const std::exception &e) {
             if (errorMessage) {
                 *errorMessage = e.what();
@@ -53,18 +58,20 @@ namespace flowonnx {
         auto mgr = SessionSystem::instance();
         auto it = mgr->sessionImageMap.find(canonicalPath);
         if (it == mgr->sessionImageMap.end()) {
-            impl.image = new SessionImage(path);
+            FLOWONNX_DEBUG("Session - The session image does not exist. Creating a new one...");
+            impl.image = SessionImage::create(path, errorMessage);
         } else {
+            FLOWONNX_DEBUG("Session - The session image already exists. Increasing the reference count...");
             impl.image = it->second;
+            impl.image->ref();
         }
-        bool isImageRefOk;
-        impl.image->ref(&isImageRefOk, errorMessage);
 
-        return isImageRefOk;
+        return impl.image != nullptr;
     }
 
     bool Session::close() {
         auto &impl = *_impl;
+        FLOWONNX_DEBUG("Session - close");
         if (!impl.image)
             return false;
 
@@ -79,6 +86,11 @@ namespace flowonnx {
         return impl.image ? impl.image->path : fs::path();
     }
 
+    bool Session::isOpen() const {
+        auto &impl = *_impl;
+        return impl.image != nullptr;
+    }
+
     Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, std::string *errorMessage) {
         try {
             Ort::SessionOptions sessOpt;
@@ -91,15 +103,18 @@ namespace flowonnx {
                 case EP_DirectML: {
                     initDirectML(sessOpt, deviceIndex, &initEPErrorMsg);
                     // log warning: "Could not initialize DirectML: {initEPErrorMsg}, use CPU."
+                    FLOWONNX_WARNING("Could not initialize DirectML: %1, use CPU.", initEPErrorMsg);
                     break;
                 }
                 case EP_CUDA: {
                     initCUDA(sessOpt, deviceIndex, &initEPErrorMsg);
                     // log warning: "Could not initialize CUDA: {initEPErrorMsg}, use CPU."
+                    FLOWONNX_WARNING("Could not initialize CUDA: %1, use CPU.", initEPErrorMsg);
                     break;
                 }
                 default: {
-                    // log warning: "Use CPU."
+                    // log info: "Use CPU."
+                    FLOWONNX_INFO("Use CPU.");
                     break;
                 }
             }

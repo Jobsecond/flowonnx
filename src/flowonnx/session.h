@@ -22,6 +22,7 @@ namespace flowonnx {
         bool close();
 
         std::filesystem::path path() const;
+        bool isOpen() const;
 
     protected:
         class Impl;
