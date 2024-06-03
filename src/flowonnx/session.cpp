@@ -101,15 +101,21 @@ namespace flowonnx {
             std::string initEPErrorMsg;
             switch (ep) {
                 case EP_DirectML: {
-                    initDirectML(sessOpt, deviceIndex, &initEPErrorMsg);
-                    // log warning: "Could not initialize DirectML: {initEPErrorMsg}, use CPU."
-                    FLOWONNX_WARNING("Could not initialize DirectML: %1, use CPU.", initEPErrorMsg);
+                    if (!initDirectML(sessOpt, deviceIndex, &initEPErrorMsg)) {
+                        // log warning: "Could not initialize DirectML: {initEPErrorMsg}, use CPU."
+                        FLOWONNX_WARNING("Could not initialize DirectML: %1, use CPU.", initEPErrorMsg);
+                    } else {
+                        FLOWONNX_INFO("Use DirectML.");
+                    }
                     break;
                 }
                 case EP_CUDA: {
-                    initCUDA(sessOpt, deviceIndex, &initEPErrorMsg);
-                    // log warning: "Could not initialize CUDA: {initEPErrorMsg}, use CPU."
-                    FLOWONNX_WARNING("Could not initialize CUDA: %1, use CPU.", initEPErrorMsg);
+                    if (!initCUDA(sessOpt, deviceIndex, &initEPErrorMsg)) {
+                        // log warning: "Could not initialize CUDA: {initEPErrorMsg}, use CPU."
+                        FLOWONNX_WARNING("Could not initialize CUDA: %1, use CPU.", initEPErrorMsg);
+                    } else {
+                        FLOWONNX_INFO("Use CUDA.");
+                    }
                     break;
                 }
                 default: {
