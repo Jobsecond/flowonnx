@@ -11,19 +11,22 @@
 
 namespace flowonnx {
 
-    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, std::string *errorMessage = nullptr);
+    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool forceOnCpu, std::string *errorMessage = nullptr);
 
     class SessionImage {
     public:
-        inline static SessionImage *create(const std::filesystem::path &onnxPath, std::string *errorMessage = nullptr);
+        inline static SessionImage *create(const std::filesystem::path &onnxPath, bool forceOnCpu, std::string *errorMessage = nullptr);
         inline int ref();
         inline int deref();
     protected:
         inline explicit SessionImage(std::filesystem::path path);
-        inline bool init(std::string *errorMessage = nullptr);
+        inline bool init(bool forceOnCpu, std::string *errorMessage = nullptr);
     public:
         std::filesystem::path path;
         int count;
+
+        std::vector<std::string> inputNames;
+        std::vector<std::string> outputNames;
 
         Ort::Env env;
         Ort::Session session;
@@ -39,6 +42,7 @@ namespace flowonnx {
     class Session::Impl {
     public:
         SessionImage *image = nullptr;
+        Ort::RunOptions runOptions;
     };
 
     inline SessionImage::SessionImage(std::filesystem::path path)
@@ -70,19 +74,34 @@ namespace flowonnx {
         return count;
     }
 
-    inline bool SessionImage::init(std::string *errorMessage) {
-        session = createOrtSession(env, path, errorMessage);
+    inline bool SessionImage::init(bool forceOnCpu, std::string *errorMessage) {
+        session = createOrtSession(env, path, forceOnCpu, errorMessage);
         if (session) {
             SessionSystem::instance()->sessionImageMap[path] = this;
+
+            Ort::AllocatorWithDefaultOptions allocator;
+
+            auto inputCount = session.GetInputCount();
+            inputNames.reserve(inputCount);
+            for (size_t i = 0; i < inputCount; ++i) {
+                inputNames.emplace_back(session.GetInputNameAllocated(i, allocator).get());
+            }
+
+            auto outputCount = session.GetOutputCount();
+            outputNames.reserve(outputCount);
+            for (size_t i = 0; i < outputCount; ++i) {
+                outputNames.emplace_back(session.GetOutputNameAllocated(i, allocator).get());
+            }
+
             return true;
         }
         return false;
     }
 
-    inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, std::string *errorMessage) {
+    inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, bool forceOnCpu, std::string *errorMessage) {
         FLOWONNX_DEBUG("SessionImage - create");
         auto imagePtr = new SessionImage(onnxPath);
-        bool ok = imagePtr->init(errorMessage);
+        bool ok = imagePtr->init(forceOnCpu, errorMessage);
         if (!ok) {
             delete imagePtr;
             FLOWONNX_ERROR("SessionImage - create failed");

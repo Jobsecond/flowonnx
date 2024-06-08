@@ -31,12 +31,20 @@ namespace flowonnx {
         };
 
         std::vector<char> data;
-        std::vector<int> shape;
+        std::vector<int64_t> shape;
         DataType type = Float;
 
-        static Tensor create(float *data, size_t dataSize, int *shape, size_t shapeSize);
-        static Tensor create(int64_t *data, size_t dataSize, int *shape, size_t shapeSize);
-        static Tensor create(bool *data, size_t dataSize, int *shape, size_t shapeSize);
+        template <typename T>
+        size_t getDataBuffer(T **out) {
+            if (out) {
+                *out = reinterpret_cast<T *>(data.data());
+            }
+            return data.size() / sizeof(T);
+        }
+
+        static Tensor create(const float *data, size_t dataSize, const int64_t *shape, size_t shapeSize);
+        static Tensor create(const int64_t *data, size_t dataSize, const int64_t *shape, size_t shapeSize);
+        static Tensor create(const bool *data, size_t dataSize, const int64_t *shape, size_t shapeSize);
     };
 
 }
