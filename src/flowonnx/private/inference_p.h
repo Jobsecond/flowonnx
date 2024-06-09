@@ -7,6 +7,8 @@ namespace flowonnx {
 
     class Inference::Impl {
     public:
+        std::vector<std::filesystem::path> pathList;
+        std::vector<Session> sessionList;
     };
 
 }

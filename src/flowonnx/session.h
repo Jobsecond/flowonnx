@@ -13,6 +13,7 @@ namespace flowonnx {
 
     // { 名称: 张量 }
     using TensorMap = std::map<std::string, Tensor>;
+    using TensorRefMap = std::map<std::string, std::reference_wrapper<Tensor>>;
 
     class FLOWONNX_EXPORT Session {
     public:
@@ -23,7 +24,7 @@ namespace flowonnx {
         Session &operator=(Session &&other) noexcept;
 
     public:
-        bool open(const std::filesystem::path &path, bool forceOnCpu, std::string *errorMessage);
+        bool open(const std::filesystem::path &path, bool preferCpu, std::string *errorMessage);
         bool close();
 
         // 获取模型所需的输入和输出名称
@@ -33,6 +34,7 @@ namespace flowonnx {
         // 运行推理
         // 如果出错，返回空 TensorMap，并输出错误信息到 errorMessage（可选）
         TensorMap run(TensorMap &inputTensorMap, std::string *errorMessage = nullptr);
+        TensorMap run(TensorRefMap &inputTensorMap, std::string *errorMessage = nullptr);
 
         void terminate();
 

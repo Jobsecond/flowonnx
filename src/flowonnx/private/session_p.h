@@ -11,16 +11,16 @@
 
 namespace flowonnx {
 
-    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool forceOnCpu, std::string *errorMessage = nullptr);
+    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool preferCpu, std::string *errorMessage = nullptr);
 
     class SessionImage {
     public:
-        inline static SessionImage *create(const std::filesystem::path &onnxPath, bool forceOnCpu, std::string *errorMessage = nullptr);
+        inline static SessionImage *create(const std::filesystem::path &onnxPath, bool preferCpu, std::string *errorMessage = nullptr);
         inline int ref();
         inline int deref();
     protected:
         inline explicit SessionImage(std::filesystem::path path);
-        inline bool init(bool forceOnCpu, std::string *errorMessage = nullptr);
+        inline bool init(bool preferCpu, std::string *errorMessage = nullptr);
     public:
         std::filesystem::path path;
         int count;
@@ -74,8 +74,8 @@ namespace flowonnx {
         return count;
     }
 
-    inline bool SessionImage::init(bool forceOnCpu, std::string *errorMessage) {
-        session = createOrtSession(env, path, forceOnCpu, errorMessage);
+    inline bool SessionImage::init(bool preferCpu, std::string *errorMessage) {
+        session = createOrtSession(env, path, preferCpu, errorMessage);
         if (session) {
             SessionSystem::instance()->sessionImageMap[path] = this;
 
@@ -98,10 +98,10 @@ namespace flowonnx {
         return false;
     }
 
-    inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, bool forceOnCpu, std::string *errorMessage) {
+    inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, bool preferCpu, std::string *errorMessage) {
         FLOWONNX_DEBUG("SessionImage - create");
         auto imagePtr = new SessionImage(onnxPath);
-        bool ok = imagePtr->init(forceOnCpu, errorMessage);
+        bool ok = imagePtr->init(preferCpu, errorMessage);
         if (!ok) {
             delete imagePtr;
             FLOWONNX_ERROR("SessionImage - create failed");

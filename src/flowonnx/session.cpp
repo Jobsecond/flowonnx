@@ -35,9 +35,12 @@ namespace flowonnx {
         return *this;
     }
 
-    bool Session::open(const fs::path &path, bool forceOnCpu, std::string *errorMessage) {
+    bool Session::open(const fs::path &path, bool preferCpu, std::string *errorMessage) {
+        if (!_impl) {
+            return false;
+        }
         auto &impl = *_impl;
-        // TODO: If the same session is already opened before, forceOnCpu will have no effect
+        // TODO: If the same session is already opened before, preferCpu will have no effect
         //       due to SessionSystem will return the existing SessionImage instead creating a new one.
         //       Should this be the desired behavior, or it needs to be fixed?
 
@@ -64,7 +67,7 @@ namespace flowonnx {
         auto it = mgr->sessionImageMap.find(canonicalPath);
         if (it == mgr->sessionImageMap.end()) {
             FLOWONNX_DEBUG("Session - The session image does not exist. Creating a new one...");
-            impl.image = SessionImage::create(path, forceOnCpu, errorMessage);
+            impl.image = SessionImage::create(path, preferCpu, errorMessage);
         } else {
             FLOWONNX_DEBUG("Session - The session image already exists. Increasing the reference count...");
             impl.image = it->second;
@@ -75,6 +78,9 @@ namespace flowonnx {
     }
 
     bool Session::close() {
+        if (!_impl) {
+            return false;
+        }
         auto &impl = *_impl;
         FLOWONNX_DEBUG("Session - close");
         if (!impl.image)
@@ -87,11 +93,17 @@ namespace flowonnx {
     }
 
     fs::path Session::path() const {
+        if (!_impl) {
+            return {};
+        }
         auto &impl = *_impl;
         return impl.image ? impl.image->path : fs::path();
     }
 
     bool Session::isOpen() const {
+        if (!_impl) {
+            return false;
+        }
         auto &impl = *_impl;
         return impl.image != nullptr;
     }
@@ -103,11 +115,15 @@ namespace flowonnx {
         return Ort::Value::CreateTensor<T>(memoryInfo, dataBuffer, dataSize, tensor.shape.data(), tensor.shape.size());
     }
 
-    TensorMap Session::run(TensorMap &inputTensorMap, std::string *errorMessage) {
-        // Here we don't use const TensorMap & because Ort::Value::CreateTensor requires a non-const buffer
-        auto &impl = *_impl;
+    template<typename TensorMapType>
+    inline TensorMap SessionRunHelper(SessionImage *image, Ort::RunOptions &runOptions, TensorMapType &inputTensorMap, std::string *errorMessage) {
+        // Here we don't use const reference because Ort::Value::CreateTensor requires a non-const buffer
+        static_assert(std::is_same_v<TensorMapType, TensorMap> ||
+                      std::is_same_v<TensorMapType, TensorRefMap>,
+                      "TensorMapType should be TensorMap or TensorRefMap");
+
         FLOWONNX_DEBUG("Session - Running inference");
-        if (!impl.image) {
+        if (!image) {
             if (errorMessage) {
                 *errorMessage = "Session is not open";
             }
@@ -121,7 +137,7 @@ namespace flowonnx {
             return {};
         }
 
-        const auto &requiredInputNames = impl.image->inputNames;
+        const auto &requiredInputNames = image->inputNames;
         std::ostringstream msgStream;
 
         // Check for missing and extra input names. If found, return empty map and the error message.
@@ -173,9 +189,15 @@ namespace flowonnx {
         try {
             auto memInfo = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-            Ort::IoBinding binding(impl.image->session);
+            Ort::IoBinding binding(image->session);
             for (auto &[name, tensor]: inputTensorMap) {
-                switch (tensor.type) {
+                Tensor::DataType tensorType;
+                if constexpr (std::is_same_v<TensorMapType, TensorRefMap>) {
+                    tensorType = tensor.get().type;
+                } else {
+                    tensorType = tensor.type;
+                }
+                switch (tensorType) {
                     case Tensor::Float:
                         binding.BindInput(name.c_str(), createOrtValueHelper<float>(tensor, memInfo));
                         break;
@@ -193,13 +215,13 @@ namespace flowonnx {
                 }
             }
 
-            const auto &outputNames = impl.image->outputNames;
+            const auto &outputNames = image->outputNames;
             for (const auto &name: outputNames) {
                 binding.BindOutput(name.c_str(), memInfo);
             }
 
-            impl.runOptions.UnsetTerminate();
-            impl.image->session.Run(impl.runOptions, binding);
+            runOptions.UnsetTerminate();
+            image->session.Run(runOptions, binding);
 
             TensorMap outTensorMap;
             auto outputValues = binding.GetOutputValues();
@@ -237,6 +259,9 @@ namespace flowonnx {
     }
 
     std::vector<std::string> Session::inputNames() const {
+        if (!_impl) {
+            return {};
+        }
         auto &impl = *_impl;
         if (!impl.image) {
             return {};
@@ -245,6 +270,9 @@ namespace flowonnx {
     }
 
     std::vector<std::string> Session::outputNames() const {
+        if (!_impl) {
+            return {};
+        }
         auto &impl = *_impl;
         if (!impl.image) {
             return {};
@@ -253,11 +281,30 @@ namespace flowonnx {
     }
 
     void Session::terminate() {
+        if (!_impl) {
+            return;
+        }
         auto &impl = *_impl;
         impl.runOptions.SetTerminate();
     }
 
-    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool forceOnCpu, std::string *errorMessage) {
+    TensorMap Session::run(TensorMap &inputTensorMap, std::string *errorMessage) {
+        if (!_impl) {
+            return {};
+        }
+        auto &impl = *_impl;
+        return SessionRunHelper<TensorMap>(impl.image, impl.runOptions, inputTensorMap, errorMessage);
+    }
+
+    TensorMap Session::run(TensorRefMap &inputTensorMap, std::string *errorMessage) {
+        if (!_impl) {
+            return {};
+        }
+        auto &impl = *_impl;
+        return SessionRunHelper<TensorRefMap>(impl.image, impl.runOptions, inputTensorMap, errorMessage);
+    }
+
+    Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool preferCpu, std::string *errorMessage) {
         try {
             Ort::SessionOptions sessOpt;
 
@@ -265,7 +312,7 @@ namespace flowonnx {
             auto deviceIndex = 0;  // TODO: should be a property in Environment
 
             std::string initEPErrorMsg;
-            if (!forceOnCpu) {
+            if (!preferCpu) {
                 switch (ep) {
                     case EP_DirectML: {
                         if (!initDirectML(sessOpt, deviceIndex, &initEPErrorMsg)) {
