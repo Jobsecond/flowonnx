@@ -22,7 +22,11 @@ namespace flowonnx {
             oss << std::noshowpoint << t;
             return oss.str();
         } else if constexpr (std::is_same_v<T2, std::filesystem::path>) {
+#ifdef _WIN32
+            return wide2utf8(t.wstring());
+#else
             return t.string();
+#endif
         }
 #ifdef _WIN32
         else if constexpr (std::is_same_v<T2, std::wstring>) {
@@ -39,7 +43,7 @@ namespace flowonnx {
 #endif
 
     FLOWONNX_EXPORT std::string formatText(const std::string &format,
-                                               const std::vector<std::string> &args);
+                                           const std::vector<std::string> &args);
 
     template <typename... Args>
     auto formatTextN(const std::string &format, Args &&...args) {
