@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include <flowonnx/flowonnxglobal.h>
 #include <flowonnx/format.h>
 
 namespace flowonnx {
@@ -17,7 +18,7 @@ namespace flowonnx {
         LogLevel_Debug = 5,
     };
 
-    class Logger {
+    class FLOWONNX_EXPORT Logger {
     public:
         static Logger &getInstance();
 

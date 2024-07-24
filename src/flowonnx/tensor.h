@@ -42,6 +42,14 @@ namespace flowonnx {
             return data.size() / sizeof(T);
         }
 
+        template <typename T>
+        size_t getDataBuffer(const T **out) const {
+            if (out) {
+                *out = reinterpret_cast<const T *>(data.data());
+            }
+            return data.size() / sizeof(T);
+        }
+
         static Tensor create(const float *data, size_t dataSize, const int64_t *shape, size_t shapeSize);
         static Tensor create(const int64_t *data, size_t dataSize, const int64_t *shape, size_t shapeSize);
         static Tensor create(const bool *data, size_t dataSize, const int64_t *shape, size_t shapeSize);

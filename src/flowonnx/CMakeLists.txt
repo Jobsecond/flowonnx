@@ -7,6 +7,14 @@ endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE FLOWONNX_LIBRARY)
 
+if (ONNXRUNTIME_ENABLE_CUDA)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ONNXRUNTIME_ENABLE_CUDA)
+endif()
+
+if (ONNXRUNTIME_ENABLE_DML)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ONNXRUNTIME_ENABLE_DML)
+endif()
+
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 file(GLOB_RECURSE _src *.h *.cpp)
