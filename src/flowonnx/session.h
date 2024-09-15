@@ -7,13 +7,9 @@
 #include <functional>
 
 #include <flowonnx/flowonnxglobal.h>
-#include <flowonnx/tensor.h>
+#include <flowonnx/tensormap.h>
 
 namespace flowonnx {
-
-    // { 名称: 张量 }
-    using TensorMap = std::map<std::string, Tensor>;
-    using TensorRefMap = std::map<std::string, std::reference_wrapper<Tensor>>;
 
     class FLOWONNX_EXPORT Session {
     public:

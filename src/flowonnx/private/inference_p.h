@@ -1,6 +1,7 @@
 #ifndef INFERENCE_P_H
 #define INFERENCE_P_H
 
+#include <flowonnx/session.h>
 #include <flowonnx/inference.h>
 
 namespace flowonnx {

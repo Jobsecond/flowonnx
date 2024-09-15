@@ -1,8 +1,9 @@
 #ifndef INFERENCE_H
 #define INFERENCE_H
 
-#include <flowonnx/tensor.h>
-#include <flowonnx/session.h>
+#include <filesystem>
+
+#include <flowonnx/tensormap.h>
 
 namespace flowonnx {
 

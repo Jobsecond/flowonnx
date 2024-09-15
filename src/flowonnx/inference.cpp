@@ -1,6 +1,7 @@
 #include "inference.h"
 #include "inference_p.h"
 #include <flowonnx/logger.h>
+#include <flowonnx/session.h>
 
 #include <onnxruntime_cxx_api.h>
 
