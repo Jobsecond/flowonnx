@@ -93,6 +93,7 @@ namespace flowonnx {
             return false;
         }
 
+        const OrtApi &ortApi = Ort::GetApi();
         const OrtDmlApi *ortDmlApi;
         Ort::Status getApiStatus((ortApi.GetExecutionProviderApi(
             "DML", ORT_API_VERSION, reinterpret_cast<const void **>(&ortDmlApi))));
@@ -116,6 +117,7 @@ namespace flowonnx {
             }
             return false;
         }
+        return true;
 #else
         if (errorMessage) {
             *errorMessage = "The library is not built with DirectML support.";

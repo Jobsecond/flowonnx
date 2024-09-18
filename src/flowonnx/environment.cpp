@@ -70,6 +70,7 @@ namespace flowonnx {
         bool loaded = false;
         fs::path ortPath;
         ExecutionProvider executionProvider = EP_CPU;
+        int deviceIndex = 0;
 
         // Library data
         void *hLibrary = nullptr;
@@ -111,6 +112,16 @@ namespace flowonnx {
     ExecutionProvider Environment::executionProvider() const {
         auto &impl = *_impl;
         return impl.executionProvider;
+    }
+
+    int Environment::deviceIndex() const {
+        auto &impl = *_impl;
+        return impl.deviceIndex;
+    }
+
+    void Environment::setDeviceIndex(int deviceIndex) {
+        auto &impl = *_impl;
+        impl.deviceIndex = deviceIndex;
     }
 
     std::string Environment::versionString() const {

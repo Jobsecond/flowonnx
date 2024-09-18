@@ -22,6 +22,8 @@ namespace flowonnx {
 
         std::filesystem::path runtimePath() const;
         ExecutionProvider executionProvider() const;
+        int deviceIndex() const;
+        void setDeviceIndex(int deviceIndex);
         std::string versionString() const;
 
     protected:

@@ -308,27 +308,28 @@ namespace flowonnx {
         try {
             Ort::SessionOptions sessOpt;
 
-            auto ep = Environment::instance()->executionProvider();
-            auto deviceIndex = 0;  // TODO: should be a property in Environment
+            auto flowonnxEnv = Environment::instance();
+            auto ep = flowonnxEnv->executionProvider();
+            auto deviceIndex = flowonnxEnv->deviceIndex();
 
             std::string initEPErrorMsg;
             if (!preferCpu) {
                 switch (ep) {
                     case EP_DirectML: {
                         if (!initDirectML(sessOpt, deviceIndex, &initEPErrorMsg)) {
-                            // log warning: "Could not initialize DirectML: {initEPErrorMsg}, use CPU."
-                            FLOWONNX_WARNING("Could not initialize DirectML: %1, use CPU.", initEPErrorMsg);
+                            // log warning: "Could not initialize DirectML: {initEPErrorMsg}, falling back to CPU."
+                            FLOWONNX_WARNING("Could not initialize DirectML: %1, falling back to CPU.", initEPErrorMsg);
                         } else {
-                            FLOWONNX_INFO("Use DirectML.");
+                            FLOWONNX_INFO("Use DirectML. Device index: %1", deviceIndex);
                         }
                         break;
                     }
                     case EP_CUDA: {
                         if (!initCUDA(sessOpt, deviceIndex, &initEPErrorMsg)) {
-                            // log warning: "Could not initialize CUDA: {initEPErrorMsg}, use CPU."
-                            FLOWONNX_WARNING("Could not initialize CUDA: %1, use CPU.", initEPErrorMsg);
+                            // log warning: "Could not initialize CUDA: {initEPErrorMsg}, falling back to CPU."
+                            FLOWONNX_WARNING("Could not initialize CUDA: %1, falling back to CPU.", initEPErrorMsg);
                         } else {
-                            FLOWONNX_INFO("Use CUDA.");
+                            FLOWONNX_INFO("Use CUDA. Device index: %1", deviceIndex);
                         }
                         break;
                     }
@@ -339,7 +340,7 @@ namespace flowonnx {
                     }
                 }
             } else {
-                FLOWONNX_INFO("Use CPU.");
+                FLOWONNX_INFO("The model prefers to use CPU.");
             }
 
 #ifdef _WIN32
