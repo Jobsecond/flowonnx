@@ -53,21 +53,22 @@ namespace flowonnx {
 
     inline int SessionImage::ref() {
         count++;
-        FLOWONNX_DEBUG("SessionImage - ref(), now ref count = %1", count);
+        FLOWONNX_DEBUG("SessionImage [%1] - ref(), now ref count = %2", path.filename(), count);
         return count;
     }
 
     inline int SessionImage::deref() {
         count--;
-        FLOWONNX_DEBUG("SessionImage - deref(), now ref count = %1", count);
+        auto filename = path.filename();
+        FLOWONNX_DEBUG("SessionImage [%1] - deref(), now ref count = %2", filename, count);
         if (count == 0) {
             auto &sessionImageMap = SessionSystem::instance()->sessionImageMap;
             auto it = sessionImageMap.find(path);
             if (it != sessionImageMap.end()) {
-                FLOWONNX_DEBUG("SessionImage - removing from session image map");
+                FLOWONNX_DEBUG("SessionImage [%1] - removing from session image map", filename);
                 sessionImageMap.erase(it);
             }
-            FLOWONNX_DEBUG("SessionImage - delete");
+            FLOWONNX_DEBUG("SessionImage [%1] - delete", filename);
             delete this;
             return 0;
         }
@@ -99,15 +100,16 @@ namespace flowonnx {
     }
 
     inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, bool preferCpu, std::string *errorMessage) {
-        FLOWONNX_DEBUG("SessionImage - create");
+        auto filename = onnxPath.filename();
+        FLOWONNX_DEBUG("SessionImage [%1] - create", filename);
         auto imagePtr = new SessionImage(onnxPath);
         bool ok = imagePtr->init(preferCpu, errorMessage);
         if (!ok) {
             delete imagePtr;
-            FLOWONNX_ERROR("SessionImage - create failed");
+            FLOWONNX_ERROR("SessionImage [%1] - create failed", filename);
             return nullptr;
         }
-        FLOWONNX_DEBUG("SessionImage - created successfully");
+        FLOWONNX_DEBUG("SessionImage [%1] - created successfully", filename);
         return imagePtr;
     }
 

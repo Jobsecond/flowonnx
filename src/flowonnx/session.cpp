@@ -2,6 +2,8 @@
 #include "session_p.h"
 #include "executionprovider_p.h"
 
+#include <chrono>
+#include <cstdio>
 #include <sstream>
 #include <unordered_set>
 #include <flowonnx/environment.h>
@@ -82,7 +84,7 @@ namespace flowonnx {
             return false;
         }
         auto &impl = *_impl;
-        FLOWONNX_DEBUG("Session - close");
+        FLOWONNX_DEBUG("Session [%1] - close", path().filename());
         if (!impl.image)
             return false;
 
@@ -122,7 +124,10 @@ namespace flowonnx {
                       std::is_same_v<TensorMapType, TensorRefMap>,
                       "TensorMapType should be TensorMap or TensorRefMap");
 
-        FLOWONNX_DEBUG("Session - Running inference");
+        auto filename = image ? image->path.filename() : "";
+        FLOWONNX_INFO("Session [%1] - Running inference", filename);
+        auto timeStart = std::chrono::steady_clock::now();
+
         if (!image) {
             if (errorMessage) {
                 *errorMessage = "Session is not open";
@@ -139,6 +144,7 @@ namespace flowonnx {
 
         const auto &requiredInputNames = image->inputNames;
         std::ostringstream msgStream;
+        msgStream << '[' << filename << ']' << ' ';
 
         // Check for missing and extra input names. If found, return empty map and the error message.
         {
@@ -249,6 +255,13 @@ namespace flowonnx {
                         return {};
                 }
             }
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - timeStart).count();
+            auto elapsedSeconds = elapsed / 1000;
+            auto elapsedMs = static_cast<int>(elapsed % 1000);
+            char elapsedMsStr[4];
+            snprintf(elapsedMsStr, sizeof(elapsedMsStr), "%03d", elapsedMs);
+            FLOWONNX_INFO("Session [%1] - Finished inference in %2.%3 seconds", filename, elapsedSeconds, elapsedMsStr);
             return outTensorMap;
         } catch (const Ort::Exception &err) {
             if (errorMessage) {
@@ -340,7 +353,7 @@ namespace flowonnx {
                     }
                 }
             } else {
-                FLOWONNX_INFO("The model prefers to use CPU.");
+                FLOWONNX_INFO("The model prefers to use CPU. [%1]", modelPath.filename());
             }
 
 #ifdef _WIN32

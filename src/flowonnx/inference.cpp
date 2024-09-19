@@ -12,6 +12,18 @@ namespace flowonnx {
     Inference::Inference() : _impl(std::make_unique<Impl>()) {
     }
 
+    Inference::Inference(const std::string &name) : _impl(std::make_unique<Impl>()) {
+        if (_impl) {
+            _impl->inferenceName = name;
+        }
+    }
+
+    Inference::Inference(std::string &&name) : _impl(std::make_unique<Impl>()) {
+        if (_impl) {
+            _impl->inferenceName = std::move(name);
+        }
+    }
+
     Inference::~Inference() = default;
 
     Inference::Inference(Inference &&other) noexcept {
@@ -29,7 +41,7 @@ namespace flowonnx {
     bool Inference::open(const std::vector<ModelLoadInfo> &models, std::string *errorMessage) {
         auto &impl = *_impl;
 
-        FLOWONNX_DEBUG("Inference - open()");
+        FLOWONNX_DEBUG("Inference [%1] - open()", impl.inferenceName);
         std::ostringstream oss;
         bool flag = false;
         for (auto &model : models) {
@@ -70,6 +82,21 @@ namespace flowonnx {
         return true;
     }
 
+    std::string Inference::name() const {
+        auto &impl = *_impl;
+        return impl.inferenceName;
+    }
+
+    void Inference::setName(const std::string &name) {
+        auto &impl = *_impl;
+        impl.inferenceName = name;
+    }
+
+    void Inference::setName(std::string &&name) {
+        auto &impl = *_impl;
+        impl.inferenceName = std::move(name);
+    }
+
     std::vector<std::string> Inference::inputNames(size_t index) const {
         auto &impl = *_impl;
         if (index >= impl.sessionList.size()) {
@@ -89,7 +116,7 @@ namespace flowonnx {
     TensorMap Inference::run(std::vector<InferenceData> &inferDataList,
                              std::string *errorMessage) {
         auto &impl = *_impl;
-        FLOWONNX_DEBUG("Inference - run()");
+        FLOWONNX_DEBUG("Inference [%1] - run()", impl.inferenceName);
         if (!isOpen()) {
             if (errorMessage) {
                 *errorMessage = "Inference is not opened!";
@@ -109,11 +136,11 @@ namespace flowonnx {
         std::vector<TensorMap> tmpOutTensorList;
         tmpOutTensorList.reserve(sessionCount());
         for (size_t i = 0; i < impl.sessionList.size(); ++i) {
-            FLOWONNX_DEBUG("Inference - Processing session %1", i);
+            FLOWONNX_DEBUG("Inference [%1] - Processing session %2", impl.inferenceName, i);
             auto &session = impl.sessionList[i];
             auto &inferData = inferDataList[i];
             for (auto &[name, tensor] : inferData.inputData) {
-                FLOWONNX_DEBUG("Inference - Session %1: input name \"%2\"", i, name);
+                FLOWONNX_DEBUG("Inference [%1] - Session %2: input name \"%3\"", impl.inferenceName, i, name);
                 inputMapList[i].emplace(name, tensor);
             }
             std::string sessionRunErrorMessage;
@@ -127,7 +154,7 @@ namespace flowonnx {
             }
             for (auto &name : std::as_const(inferData.outputNames)) {
                 if (auto it = out.find(name); it != out.end()) {
-                    FLOWONNX_DEBUG("Inference - Session %1 output name \"%2\"", i, name);
+                    FLOWONNX_DEBUG("Inference [%1] - Session %2 output name \"%3\"", impl.inferenceName, i, name);
                     outMap.emplace(name, std::move(it->second));
                 } else {
                     if (errorMessage) {
@@ -142,7 +169,8 @@ namespace flowonnx {
                 }
                 if (binding.srcIsInput) {
                     if (auto it = inferData.inputData.find(binding.srcName); it != inferData.inputData.end()) {
-                        FLOWONNX_DEBUG("Inference - Binding session %1 input \"%2\" to session %3 input \"%4\"", i,
+                        FLOWONNX_DEBUG("Inference [%1] - Binding session %2 input \"%3\" to session %4 input \"%5\"",
+                                       impl.inferenceName, i,
                                        binding.srcName, binding.dstIndex, binding.dstName);
                         inputMapList[binding.dstIndex].emplace(binding.dstName, it->second);
                     } else {
@@ -153,7 +181,8 @@ namespace flowonnx {
                     }
                 } else {
                     if (auto it = out.find(binding.srcName); it != out.end()) {
-                        FLOWONNX_DEBUG("Inference - Binding session %1 output \"%2\" to session %3 input \"%4\"", i,
+                        FLOWONNX_DEBUG("Inference [%1] - Binding session %2 output \"%3\" to session %4 input \"%5\"",
+                                       impl.inferenceName, i,
                                        binding.srcName, binding.dstIndex, binding.dstName);
                         inputMapList[binding.dstIndex].emplace(binding.dstName, it->second);
                     } else {
@@ -166,7 +195,7 @@ namespace flowonnx {
             }
         }
 
-        FLOWONNX_INFO("Inference - inference is successful");
+        FLOWONNX_INFO("Inference [%1] - inference is successful", impl.inferenceName);
         return outMap;
     }
 

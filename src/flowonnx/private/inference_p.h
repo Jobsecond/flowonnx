@@ -10,6 +10,7 @@ namespace flowonnx {
     public:
         std::vector<std::filesystem::path> pathList;
         std::vector<Session> sessionList;
+        std::string inferenceName;
     };
 
 }

@@ -30,6 +30,8 @@ namespace flowonnx {
     class FLOWONNX_EXPORT Inference {
     public:
         Inference();
+        explicit Inference(const std::string &name);
+        explicit Inference(std::string &&name);
         ~Inference();
 
         Inference(Inference &&other) noexcept;
@@ -38,6 +40,10 @@ namespace flowonnx {
     public:
         bool open(const std::vector<ModelLoadInfo> &models, std::string *errorMessage = nullptr);
         bool close();
+
+        std::string name() const;
+        void setName(const std::string &name);
+        void setName(std::string &&name);
 
         // 获取模型所需的输入和输出名称
         std::vector<std::string> inputNames(size_t index) const;
