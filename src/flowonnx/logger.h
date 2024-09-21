@@ -92,22 +92,22 @@ namespace flowonnx {
 
 }
 
-#define FLOWONNX_LOG(level, format, ...) \
+#define LOG_WITH_LEVEL(level, format, ...) \
     flowonnx::Logger::getInstance().log(level, format, ##__VA_ARGS__)
 
-#define FLOWONNX_CRITICAL(format, ...) \
+#define LOG_CRITICAL(format, ...) \
     flowonnx::Logger::getInstance().critical(format, ##__VA_ARGS__)
 
-#define FLOWONNX_ERROR(format, ...) \
+#define LOG_ERROR(format, ...) \
     flowonnx::Logger::getInstance().error(format, ##__VA_ARGS__)
 
-#define FLOWONNX_WARNING(format, ...) \
+#define LOG_WARNING(format, ...) \
     flowonnx::Logger::getInstance().warning(format, ##__VA_ARGS__)
 
-#define FLOWONNX_INFO(format, ...) \
+#define LOG_INFO(format, ...) \
     flowonnx::Logger::getInstance().info(format, ##__VA_ARGS__)
 
-#define FLOWONNX_DEBUG(format, ...) \
+#define LOG_DEBUG(format, ...) \
     flowonnx::Logger::getInstance().debug(format, ##__VA_ARGS__)
 
 #endif // LOGGER_H

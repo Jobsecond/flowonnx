@@ -46,11 +46,11 @@ namespace flowonnx {
         //       due to SessionSystem will return the existing SessionImage instead creating a new one.
         //       Should this be the desired behavior, or it needs to be fixed?
 
-        FLOWONNX_DEBUG("Session - Try open " + path.string());
+        LOG_DEBUG("[flowonnx] Session - Try open " + path.string());
         fs::path canonicalPath;
         try {
             canonicalPath = fs::canonical(path);
-            FLOWONNX_DEBUG("Session - The canonical path is " + canonicalPath.string());
+            LOG_DEBUG("[flowonnx] Session - The canonical path is " + canonicalPath.string());
         } catch (const std::exception &e) {
             if (errorMessage) {
                 *errorMessage = e.what();
@@ -68,10 +68,10 @@ namespace flowonnx {
         auto mgr = SessionSystem::instance();
         auto it = mgr->sessionImageMap.find(canonicalPath);
         if (it == mgr->sessionImageMap.end()) {
-            FLOWONNX_DEBUG("Session - The session image does not exist. Creating a new one...");
+            LOG_DEBUG("[flowonnx] Session - The session image does not exist. Creating a new one...");
             impl.image = SessionImage::create(path, preferCpu, errorMessage);
         } else {
-            FLOWONNX_DEBUG("Session - The session image already exists. Increasing the reference count...");
+            LOG_DEBUG("[flowonnx] Session - The session image already exists. Increasing the reference count...");
             impl.image = it->second;
             impl.image->ref();
         }
@@ -84,7 +84,7 @@ namespace flowonnx {
             return false;
         }
         auto &impl = *_impl;
-        FLOWONNX_DEBUG("Session [%1] - close", path().filename());
+        LOG_DEBUG("[flowonnx] Session [%1] - close", path().filename());
         if (!impl.image)
             return false;
 
@@ -125,7 +125,7 @@ namespace flowonnx {
                       "TensorMapType should be TensorMap or TensorRefMap");
 
         auto filename = image ? image->path.filename() : "";
-        FLOWONNX_INFO("Session [%1] - Running inference", filename);
+        LOG_INFO("[flowonnx] Session [%1] - Running inference", filename);
         auto timeStart = std::chrono::steady_clock::now();
 
         if (!image) {
@@ -261,7 +261,7 @@ namespace flowonnx {
             auto elapsedMs = static_cast<int>(elapsed % 1000);
             char elapsedMsStr[4];
             snprintf(elapsedMsStr, sizeof(elapsedMsStr), "%03d", elapsedMs);
-            FLOWONNX_INFO("Session [%1] - Finished inference in %2.%3 seconds", filename, elapsedSeconds, elapsedMsStr);
+            LOG_INFO("[flowonnx] Session [%1] - Finished inference in %2.%3 seconds", filename, elapsedSeconds, elapsedMsStr);
             return outTensorMap;
         } catch (const Ort::Exception &err) {
             if (errorMessage) {
@@ -331,29 +331,29 @@ namespace flowonnx {
                     case EP_DirectML: {
                         if (!initDirectML(sessOpt, deviceIndex, &initEPErrorMsg)) {
                             // log warning: "Could not initialize DirectML: {initEPErrorMsg}, falling back to CPU."
-                            FLOWONNX_WARNING("Could not initialize DirectML: %1, falling back to CPU.", initEPErrorMsg);
+                            LOG_WARNING("[flowonnx] Could not initialize DirectML: %1, falling back to CPU.", initEPErrorMsg);
                         } else {
-                            FLOWONNX_INFO("Use DirectML. Device index: %1", deviceIndex);
+                            LOG_INFO("[flowonnx] Use DirectML. Device index: %1", deviceIndex);
                         }
                         break;
                     }
                     case EP_CUDA: {
                         if (!initCUDA(sessOpt, deviceIndex, &initEPErrorMsg)) {
                             // log warning: "Could not initialize CUDA: {initEPErrorMsg}, falling back to CPU."
-                            FLOWONNX_WARNING("Could not initialize CUDA: %1, falling back to CPU.", initEPErrorMsg);
+                            LOG_WARNING("[flowonnx] Could not initialize CUDA: %1, falling back to CPU.", initEPErrorMsg);
                         } else {
-                            FLOWONNX_INFO("Use CUDA. Device index: %1", deviceIndex);
+                            LOG_INFO("[flowonnx] Use CUDA. Device index: %1", deviceIndex);
                         }
                         break;
                     }
                     default: {
                         // log info: "Use CPU."
-                        FLOWONNX_INFO("Use CPU.");
+                        LOG_INFO("[flowonnx] Use CPU.");
                         break;
                     }
                 }
             } else {
-                FLOWONNX_INFO("The model prefers to use CPU. [%1]", modelPath.filename());
+                LOG_INFO("[flowonnx] The model prefers to use CPU. [%1]", modelPath.filename());
             }
 
 #ifdef _WIN32
