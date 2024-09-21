@@ -6,6 +6,7 @@
 #include <onnxruntime_cxx_api.h>
 
 #include <sstream>
+#include <algorithm>
 
 namespace flowonnx {
 

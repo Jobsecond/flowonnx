@@ -5,6 +5,8 @@ else()
     add_library(${PROJECT_NAME} SHARED)
 endif()
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE FLOWONNX_LIBRARY)
 
 if (ONNXRUNTIME_ENABLE_CUDA)

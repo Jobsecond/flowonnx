@@ -2,6 +2,7 @@
 #define FLOWONNX_FORMAT_H
 
 #include <string>
+#include <vector>
 #include <type_traits>
 #include <sstream>
 #include <filesystem>
