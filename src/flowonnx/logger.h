@@ -26,7 +26,9 @@ namespace flowonnx {
 
         void enableTimestamp(bool enable = true);
 
-        void enableConsole(bool enable = true);
+        void enableConsole(bool enable = true, bool useStdErr = false);
+
+        void enableColor(bool enable = true);
 
         bool setLogFile(const std::string &filename); // Returns true if successful, false otherwise
 

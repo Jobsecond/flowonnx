@@ -1,4 +1,5 @@
 #include "Logger.h"
+
 #include <iostream>
 #include <fstream>
 #include <mutex>
@@ -9,6 +10,35 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
+
+// #define WINDOWS_USE_ANSI_COLOR
+
+#if defined(_WIN32) && !defined(WINDOWS_USE_ANSI_COLOR)
+#define USE_WIN32_API_COLOR
+#endif
+
+#ifdef USE_WIN32_API_COLOR
+#include <Windows.h>
+#endif
+
+#define COLOR_RESET   "\033[0m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN    "\033[36m"
+#define COLOR_WHITE   "\033[37m"
+
+#define WIN32_COLOR_BLACK         0
+#define WIN32_COLOR_BLUE          1
+#define WIN32_COLOR_GREEN         2
+#define WIN32_COLOR_CYAN          3
+#define WIN32_COLOR_RED           4
+#define WIN32_COLOR_MAGENTA       5
+#define WIN32_COLOR_YELLOW        6
+#define WIN32_COLOR_WHITE         7
+#define WIN32_COLOR_INTENSITY     8  // For brighter versions of colors
 
 
 namespace flowonnx {
@@ -26,9 +56,24 @@ namespace flowonnx {
         return oss.str();
     }
 
+#ifdef USE_WIN32_API_COLOR
+    static HANDLE g_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+#endif
+
     class Logger::Impl {
     public:
-        explicit Impl(LogLevel level) : currentLevel(level), timestampEnabled(true), consoleEnabled(true), exitThread(false),
+        struct LogEntry {
+            LogLevel level;
+            std::string timestamp;
+            std::string message;
+        };
+
+        explicit Impl(LogLevel level) : currentLevel(level),
+                                        timestampEnabled(true),
+                                        consoleEnabled(true),
+                                        logToStdErr(false),
+                                        colorEnabled(true),
+                                        exitThread(false),
                                         loggingThread(&Impl::loggingThreadFunc, this) {
         }
 
@@ -54,9 +99,15 @@ namespace flowonnx {
             timestampEnabled = enable;
         }
 
-        void enableConsole(bool enable) {
+        void enableConsole(bool enable, bool useStdErr) {
             std::lock_guard<std::mutex> guard(logMutex);
             consoleEnabled = enable;
+            logToStdErr = useStdErr;
+        }
+
+        void enableColor(bool enable) {
+            std::lock_guard<std::mutex> guard(logMutex);
+            colorEnabled = enable;
         }
 
         bool setLogFile(const std::string &filename) {
@@ -78,13 +129,8 @@ namespace flowonnx {
         void log(LogLevel level, const std::string &message) {
             std::lock_guard<std::mutex> guard(logMutex);
             if (level <= currentLevel) {
-                std::ostringstream oss;
-                if (timestampEnabled) {
-                    oss << "[" << currentTimestamp() << "] ";
-                }
-                oss << "[" << levelToString(level) << "] " << message;
-
-                logQueue.push(oss.str());
+                LogEntry entry{level, currentTimestamp(), message};
+                logQueue.push(entry);
                 logCondition.notify_one();
             }
         }
@@ -116,15 +162,85 @@ namespace flowonnx {
                 logCondition.wait(lock, [this] { return !logQueue.empty() || exitThread; });
 
                 while (!logQueue.empty()) {
-                    std::string logMessage = logQueue.front();
+                    LogEntry logEntry = logQueue.front();
                     logQueue.pop();
 
+#ifdef USE_WIN32_API_COLOR
+                    WORD colorWindows;
+                    if (colorEnabled) {
+                        switch (logEntry.level) {
+                            case LogLevel_Critical:
+                            case LogLevel_Error:
+                                colorWindows = WIN32_COLOR_RED | WIN32_COLOR_INTENSITY;
+                                break;
+                            case LogLevel_Warning:
+                                colorWindows = WIN32_COLOR_YELLOW | WIN32_COLOR_INTENSITY;
+                                break;
+                            case LogLevel_Info:
+                                colorWindows = WIN32_COLOR_GREEN;
+                                break;
+                            case LogLevel_Debug:
+                                colorWindows = WIN32_COLOR_CYAN;
+                                break;
+                            default:
+                                colorWindows = WIN32_COLOR_WHITE;
+                                break;
+                        }
+                    }
+#else
+                    const char *colorAnsi;
+                    if (colorEnabled) {
+                        // Choose color based on log level
+                        switch (logEntry.level) {
+                            case LogLevel_Critical:
+                            case LogLevel_Error:
+                                colorAnsi = COLOR_RED;
+                                break;
+                            case LogLevel_Warning:
+                                colorAnsi = COLOR_YELLOW;
+                                break;
+                            case LogLevel_Info:
+                                colorAnsi = COLOR_GREEN;
+                                break;
+                            case LogLevel_Debug:
+                                colorAnsi = COLOR_CYAN;
+                                break;
+                            default:
+                                colorAnsi = COLOR_RESET;
+                                break;
+                        }
+                    }
+#endif
+
+                    // Format log output
+                    std::ostringstream formattedMessage;
+                    if (timestampEnabled) {
+                        formattedMessage << "[" << logEntry.timestamp << "] ";
+                    }
+
+                    // Log level with color (if enabled)
                     if (consoleEnabled) {
-                        std::cout << logMessage << std::endl;
+                        std::ostream &outputStream = logToStdErr ? std::cerr : std::cout;
+#ifdef USE_WIN32_API_COLOR
+                        SetConsoleTextAttribute(g_hConsole, colorWindows);
+#else
+                        outputStream << colorAnsi;
+#endif
+                        outputStream << "[" << logEntry.timestamp << "] "
+                                     << "[" << levelToString(logEntry.level) << "]"
+                                     << " " << logEntry.message;
+#ifdef USE_WIN32_API_COLOR
+                        SetConsoleTextAttribute(g_hConsole, WIN32_COLOR_WHITE);
+#else
+                        outputStream << COLOR_RESET;
+#endif
+                        outputStream << std::endl;
                     }
 
                     if (logFile.is_open()) {
-                        logFile << logMessage << std::endl;
+                        logFile << "[" << logEntry.timestamp << "] "
+                                << "[" << levelToString(logEntry.level) << "] "
+                                << logEntry.message << std::endl;
                     }
                 }
 
@@ -156,8 +272,10 @@ namespace flowonnx {
         std::ofstream logFile;
         bool timestampEnabled;
         bool consoleEnabled;
+        bool logToStdErr;
+        bool colorEnabled;
 
-        std::queue<std::string> logQueue;
+        std::queue<LogEntry> logQueue;
         std::thread loggingThread;
         std::condition_variable logCondition;
         std::atomic<bool> exitThread;
@@ -181,8 +299,12 @@ namespace flowonnx {
         _impl->enableTimestamp(enable);
     }
 
-    void Logger::enableConsole(bool enable) {
-        _impl->enableConsole(enable);
+    void Logger::enableConsole(bool enable, bool useStdErr) {
+        _impl->enableConsole(enable, useStdErr);
+    }
+
+    void Logger::enableColor(bool enable) {
+        _impl->enableColor(enable);
     }
 
     bool Logger::setLogFile(const std::string &filename) {
