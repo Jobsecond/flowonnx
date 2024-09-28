@@ -40,6 +40,16 @@ if(WIN32)
         COMMAND xcopy /Q /Y *.dll \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../bin\" > NUL
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
     )
+elseif(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME}
+        COMMAND cp -f *.dylib \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../lib\"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
+    )
+else()
+    add_custom_command(TARGET ${PROJECT_NAME}
+        COMMAND cp -f *.so \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../lib\"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
+    )
 endif()
 
 # Libraries
