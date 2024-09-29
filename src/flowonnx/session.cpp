@@ -110,6 +110,14 @@ namespace flowonnx {
         return impl.image != nullptr;
     }
 
+    Session::State Session::state() const {
+        if (!_impl) {
+            return Session::State::Idle;
+        }
+        auto &impl = *_impl;
+        return impl.state.load();
+    }
+
     template<typename T>
     inline Ort::Value createOrtValueHelper(Tensor &tensor, const Ort::MemoryInfo &memoryInfo) {
         T *dataBuffer;
@@ -118,12 +126,14 @@ namespace flowonnx {
     }
 
     template<typename TensorMapType>
-    inline TensorMap SessionRunHelper(SessionImage *image, Ort::RunOptions &runOptions, TensorMapType &inputTensorMap, std::string *errorMessage) {
+    inline TensorMap SessionRunHelper(SessionImage *image, Ort::RunOptions &runOptions, TensorMapType &inputTensorMap,
+                                      std::atomic<Session::State> &state, std::string *errorMessage) {
         // Here we don't use const reference because Ort::Value::CreateTensor requires a non-const buffer
         static_assert(std::is_same_v<TensorMapType, TensorMap> ||
                       std::is_same_v<TensorMapType, TensorRefMap>,
                       "TensorMapType should be TensorMap or TensorRefMap");
 
+        state.store(Session::State::Running);
         auto filename = image ? image->path.filename() : "";
         LOG_INFO("[flowonnx] Session [%1] - Running inference", filename);
         auto timeStart = std::chrono::steady_clock::now();
@@ -132,6 +142,7 @@ namespace flowonnx {
             if (errorMessage) {
                 *errorMessage = "Session is not open";
             }
+            state.store(Session::State::Failed);
             return {};
         }
 
@@ -139,6 +150,7 @@ namespace flowonnx {
             if (errorMessage) {
                 *errorMessage = "Input map is empty";
             }
+            state.store(Session::State::Failed);
             return {};
         }
 
@@ -188,6 +200,7 @@ namespace flowonnx {
                 if (errorMessage) {
                     *errorMessage = msgStream.str();
                 }
+                state.store(Session::State::Failed);
                 return {};
             }
         }
@@ -217,6 +230,7 @@ namespace flowonnx {
                         if (errorMessage) {
                             *errorMessage = formatTextN("Tensor data type for \"%1\" is not implemented!", name);
                         }
+                        state.store(Session::State::Failed);
                         return {};
                 }
             }
@@ -252,6 +266,7 @@ namespace flowonnx {
                         if (errorMessage) {
                             *errorMessage = formatTextN("Tensor data type for \"%1\" is not implemented!", name);
                         }
+                        state.store(Session::State::Failed);
                         return {};
                 }
             }
@@ -262,12 +277,14 @@ namespace flowonnx {
             char elapsedMsStr[4];
             snprintf(elapsedMsStr, sizeof(elapsedMsStr), "%03d", elapsedMs);
             LOG_INFO("[flowonnx] Session [%1] - Finished inference in %2.%3 seconds", filename, elapsedSeconds, elapsedMsStr);
+            state.store(Session::State::Idle);
             return outTensorMap;
         } catch (const Ort::Exception &err) {
             if (errorMessage) {
                 *errorMessage = err.what();
             }
         }
+        state.store(Session::State::Failed);
         return {};
     }
 
@@ -299,6 +316,7 @@ namespace flowonnx {
         }
         auto &impl = *_impl;
         impl.runOptions.SetTerminate();
+        impl.state.store(Session::State::Terminated);
     }
 
     TensorMap Session::run(TensorMap &inputTensorMap, std::string *errorMessage) {
@@ -306,7 +324,7 @@ namespace flowonnx {
             return {};
         }
         auto &impl = *_impl;
-        return SessionRunHelper<TensorMap>(impl.image, impl.runOptions, inputTensorMap, errorMessage);
+        return SessionRunHelper<TensorMap>(impl.image, impl.runOptions, inputTensorMap, impl.state, errorMessage);
     }
 
     TensorMap Session::run(TensorRefMap &inputTensorMap, std::string *errorMessage) {
@@ -314,7 +332,7 @@ namespace flowonnx {
             return {};
         }
         auto &impl = *_impl;
-        return SessionRunHelper<TensorRefMap>(impl.image, impl.runOptions, inputTensorMap, errorMessage);
+        return SessionRunHelper<TensorRefMap>(impl.image, impl.runOptions, inputTensorMap, impl.state, errorMessage);
     }
 
     Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool preferCpu, std::string *errorMessage) {

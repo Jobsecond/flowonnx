@@ -19,6 +19,13 @@ namespace flowonnx {
         Session(Session &&other) noexcept;
         Session &operator=(Session &&other) noexcept;
 
+        enum State {
+            Idle,
+            Running,
+            Failed,
+            Terminated,
+        };
+
     public:
         bool open(const std::filesystem::path &path, bool preferCpu, std::string *errorMessage);
         bool close();
@@ -36,6 +43,7 @@ namespace flowonnx {
 
         std::filesystem::path path() const;
         bool isOpen() const;
+        State state() const;
 
     protected:
         class Impl;

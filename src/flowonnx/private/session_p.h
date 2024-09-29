@@ -1,6 +1,7 @@
 #ifndef DSINFER_SESSION_P_H
 #define DSINFER_SESSION_P_H
 
+#include <atomic>
 #include <map>
 #include <utility>
 
@@ -43,6 +44,7 @@ namespace flowonnx {
     public:
         SessionImage *image = nullptr;
         Ort::RunOptions runOptions;
+        std::atomic<State> state = State::Idle;
     };
 
     inline SessionImage::SessionImage(std::filesystem::path path)
