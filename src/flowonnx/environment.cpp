@@ -8,6 +8,7 @@
 #include <loadso/system.h>
 
 #include "format.h"
+#include "logger.h"
 
 namespace fs = std::filesystem;
 
@@ -18,9 +19,12 @@ namespace flowonnx {
     class Environment::Impl {
     public:
         bool load(const fs::path &path, ExecutionProvider ep, std::string *errorMessage) {
+            LOG_INFO("flowonnx", "Environment - Loading environment");
+
             LoadSO::Library tempLib;
 
             // 1. Load Ort shared library and create handle
+            LOG_DEBUG("flowonnx", "Environment - Loading ONNX Runtime shared library");
 #ifdef _WIN32
             auto orgLibPath = LoadSO::System::SetLibraryPath(path.parent_path());
 #endif
@@ -34,6 +38,7 @@ namespace flowonnx {
 #endif
 
             // 2. Get Ort API getter handle
+            LOG_DEBUG("flowonnx", "Environment - Getting ONNX Runtime API handle");
             auto addr = tempLib.resolve("OrtGetApiBase");
             if (!addr) {
                 *errorMessage =
@@ -42,6 +47,7 @@ namespace flowonnx {
             }
 
             // 3. Check Ort API
+            LOG_DEBUG("flowonnx", "Environment - ORT_API_VERSION is " + std::to_string(ORT_API_VERSION));
             auto handle = (OrtApiBase * (ORT_API_CALL *) ()) addr;
             auto apiBase = handle();
             auto api = apiBase->GetApi(ORT_API_VERSION);
@@ -49,6 +55,8 @@ namespace flowonnx {
                 *errorMessage = formatTextN("%1: Failed to get api instance");
                 return false;
             }
+
+            LOG_DEBUG("flowonnx", "Environment - ONNX Runtime library version is " + std::string(apiBase->GetVersionString()));
 
             // Successfully get Ort API.
             Ort::InitApi(api);
@@ -61,6 +69,8 @@ namespace flowonnx {
 
             ortApiBase = apiBase;
             ortApi = api;
+
+            LOG_INFO("flowonnx", "Environment - Load successful");
             return true;
         }
 

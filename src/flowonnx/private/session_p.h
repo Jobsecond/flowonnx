@@ -13,6 +13,8 @@ namespace flowonnx {
 
     Ort::Session createOrtSession(const Ort::Env &env, const std::filesystem::path &modelPath, bool preferCpu, std::string *errorMessage = nullptr);
 
+    void loggingFuncOrt(void* param, OrtLoggingLevel severity, const char* category, const char* logid, const char* code_location, const char* message);
+
     class SessionImage {
     public:
         inline static SessionImage *create(const std::filesystem::path &onnxPath, bool preferCpu, std::string *errorMessage = nullptr);
@@ -47,28 +49,28 @@ namespace flowonnx {
 
     inline SessionImage::SessionImage(std::filesystem::path path)
         : path(std::move(path)), count(1),
-          env(ORT_LOGGING_LEVEL_WARNING, "flowonnx"),
+          env(ORT_LOGGING_LEVEL_WARNING, "flowonnx", loggingFuncOrt, nullptr),
           session(nullptr) {
     }
 
     inline int SessionImage::ref() {
         count++;
-        LOG_DEBUG("[flowonnx] SessionImage [%1] - ref(), now ref count = %2", path.filename(), count);
+        LOG_DEBUG("flowonnx", "SessionImage [%1] - ref(), now ref count = %2", path.filename(), count);
         return count;
     }
 
     inline int SessionImage::deref() {
         count--;
         auto filename = path.filename();
-        LOG_DEBUG("[flowonnx] SessionImage [%1] - deref(), now ref count = %2", filename, count);
+        LOG_DEBUG("flowonnx", "SessionImage [%1] - deref(), now ref count = %2", filename, count);
         if (count == 0) {
             auto &sessionImageMap = SessionSystem::instance()->sessionImageMap;
             auto it = sessionImageMap.find(path);
             if (it != sessionImageMap.end()) {
-                LOG_DEBUG("[flowonnx] SessionImage [%1] - removing from session image map", filename);
+                LOG_DEBUG("flowonnx", "SessionImage [%1] - removing from session image map", filename);
                 sessionImageMap.erase(it);
             }
-            LOG_DEBUG("[flowonnx] SessionImage [%1] - delete", filename);
+            LOG_DEBUG("flowonnx", "SessionImage [%1] - delete", filename);
             delete this;
             return 0;
         }
@@ -101,15 +103,15 @@ namespace flowonnx {
 
     inline SessionImage *SessionImage::create(const std::filesystem::path &onnxPath, bool preferCpu, std::string *errorMessage) {
         auto filename = onnxPath.filename();
-        LOG_DEBUG("[flowonnx] SessionImage [%1] - create", filename);
+        LOG_DEBUG("flowonnx", "SessionImage [%1] - create", filename);
         auto imagePtr = new SessionImage(onnxPath);
         bool ok = imagePtr->init(preferCpu, errorMessage);
         if (!ok) {
             delete imagePtr;
-            LOG_ERROR("[flowonnx] SessionImage [%1] - create failed", filename);
+            LOG_ERROR("flowonnx", "SessionImage [%1] - create failed", filename);
             return nullptr;
         }
-        LOG_DEBUG("[flowonnx] SessionImage [%1] - created successfully", filename);
+        LOG_DEBUG("flowonnx", "SessionImage [%1] - created successfully", filename);
         return imagePtr;
     }
 

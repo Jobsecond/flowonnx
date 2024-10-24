@@ -11,7 +11,7 @@ namespace flowonnx {
 
     enum LogLevel {
         LogLevel_Off = 0,
-        LogLevel_Critical = 1,
+        LogLevel_Fatal = 1,
         LogLevel_Error = 2,
         LogLevel_Warning = 3,
         LogLevel_Info = 4,
@@ -20,64 +20,7 @@ namespace flowonnx {
 
     class FLOWONNX_EXPORT Logger {
     public:
-        static Logger &getInstance();
-
-        void setLogLevel(LogLevel level);
-
-        void enableTimestamp(bool enable = true);
-
-        void enableConsole(bool enable = true, bool useStdErr = false);
-
-        void enableColor(bool enable = true);
-
-        bool setLogFile(const std::string &filename); // Returns true if successful, false otherwise
-
-        void disableLogFile();
-
-        void log(LogLevel level, const std::string &message);
-
-        template <typename... Args>
-        void log(LogLevel level, const std::string &format, Args &&...args) {
-            log(level, formatTextN(format, std::forward<Args>(args)...));
-        }
-
-        void critical(const std::string &message);
-
-        template <typename... Args>
-        void critical(const std::string &format, Args &&...args) {
-            critical(formatTextN(format, std::forward<Args>(args)...));
-        }
-
-        void error(const std::string &message);
-
-        template <typename... Args>
-        void error(const std::string &format, Args &&...args) {
-            error(formatTextN(format, std::forward<Args>(args)...));
-        }
-
-        void warning(const std::string &message);
-
-        template <typename... Args>
-        void warning(const std::string &format, Args &&...args) {
-            warning(formatTextN(format, std::forward<Args>(args)...));
-        }
-
-        void info(const std::string &message);
-
-        template <typename... Args>
-        void info(const std::string &format, Args &&...args) {
-            info(formatTextN(format, std::forward<Args>(args)...));
-        }
-
-        void debug(const std::string &message);
-
-        template <typename... Args>
-        void debug(const std::string &format, Args &&...args) {
-            debug(formatTextN(format, std::forward<Args>(args)...));
-        }
-
-    private:
-        explicit Logger(LogLevel level = LogLevel_Debug);
+        Logger();
 
         ~Logger();
 
@@ -85,29 +28,77 @@ namespace flowonnx {
 
         Logger &operator=(const Logger &) = delete;
 
-        class Impl;
+        using Callback = void (*)(int, const char *, const char *);
+    public:
+        static void printColorLog(int level, const char *category, const char *message);
 
-        std::unique_ptr<Impl> _impl;
+        static void setLogLevel(LogLevel level);
+
+        static void setCallback(Callback callback);
+
+        static void setDefaultCallback();
+
+        static void log(LogLevel level, const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void log(LogLevel level, const std::string &category, const std::string &format, Args &&...args) {
+            log(level, category, formatTextN(format, std::forward<Args>(args)...));
+        }
+
+        static void fatal(const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void fatal(const std::string &category, const std::string &format, Args &&...args) {
+            fatal(category, formatTextN(format, std::forward<Args>(args)...));
+        }
+
+        static void error(const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void error(const std::string &category, const std::string &format, Args &&...args) {
+            error(category, formatTextN(format, std::forward<Args>(args)...));
+        }
+
+        static void warning(const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void warning(const std::string &category, const std::string &format, Args &&...args) {
+            warning(category, formatTextN(format, std::forward<Args>(args)...));
+        }
+
+        static void info(const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void info(const std::string &category, const std::string &format, Args &&...args) {
+            info(category, formatTextN(format, std::forward<Args>(args)...));
+        }
+
+        static void debug(const std::string &category, const std::string &message);
+
+        template <typename... Args>
+        static void debug(const std::string &category, const std::string &format, Args &&...args) {
+            debug(category, formatTextN(format, std::forward<Args>(args)...));
+        }
     };
 
 }
 
-#define LOG_WITH_LEVEL(level, format, ...) \
-    flowonnx::Logger::getInstance().log(level, format, ##__VA_ARGS__)
+#define LOG_WITH_LEVEL(level, category, format, ...) \
+    flowonnx::Logger::log(level, category, format, ##__VA_ARGS__)
 
-#define LOG_CRITICAL(format, ...) \
-    flowonnx::Logger::getInstance().critical(format, ##__VA_ARGS__)
+#define LOG_FATAL(category, format, ...) \
+    flowonnx::Logger::fatal(category, format, ##__VA_ARGS__)
 
-#define LOG_ERROR(format, ...) \
-    flowonnx::Logger::getInstance().error(format, ##__VA_ARGS__)
+#define LOG_ERROR(category, format, ...) \
+    flowonnx::Logger::error(category, format, ##__VA_ARGS__)
 
-#define LOG_WARNING(format, ...) \
-    flowonnx::Logger::getInstance().warning(format, ##__VA_ARGS__)
+#define LOG_WARNING(category, format, ...) \
+    flowonnx::Logger::warning(category, format, ##__VA_ARGS__)
 
-#define LOG_INFO(format, ...) \
-    flowonnx::Logger::getInstance().info(format, ##__VA_ARGS__)
+#define LOG_INFO(category, format, ...) \
+    flowonnx::Logger::info(category, format, ##__VA_ARGS__)
 
-#define LOG_DEBUG(format, ...) \
-    flowonnx::Logger::getInstance().debug(format, ##__VA_ARGS__)
+#define LOG_DEBUG(category, format, ...) \
+    flowonnx::Logger::debug(category, format, ##__VA_ARGS__)
 
 #endif // LOGGER_H
