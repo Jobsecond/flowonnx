@@ -1,6 +1,7 @@
 #ifndef TENSOR_H
 #define TENSOR_H
 
+#include <cstdint>
 #include <vector>
 #include <string>
 

@@ -11,6 +11,13 @@
 
 namespace flowonnx {
 
+#ifdef _WIN32
+    FLOWONNX_EXPORT std::string wide2utf8(const std::wstring &s);
+#endif
+
+    FLOWONNX_EXPORT std::string formatText(const std::string &format,
+                                           const std::vector<std::string> &args);
+
     template <class T>
     std::string anyToString(T &&t) {
         using T2 = std::remove_cv_t<std::remove_reference_t<T>>;
@@ -38,13 +45,6 @@ namespace flowonnx {
             return std::string(t);
         }
     }
-
-#ifdef _WIN32
-    FLOWONNX_EXPORT std::string wide2utf8(const std::wstring &s);
-#endif
-
-    FLOWONNX_EXPORT std::string formatText(const std::string &format,
-                                           const std::vector<std::string> &args);
 
     template <typename... Args>
     auto formatTextN(const std::string &format, Args &&...args) {

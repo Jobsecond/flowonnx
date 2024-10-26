@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "ort_header_fix_p.h"
 #include <onnxruntime_cxx_api.h>
 
 #include <loadso/library.h>

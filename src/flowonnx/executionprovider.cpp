@@ -1,5 +1,6 @@
 #include <memory>
 
+#include "ort_header_fix_p.h"
 #include "executionprovider_p.h"
 
 #ifdef ONNXRUNTIME_ENABLE_DML

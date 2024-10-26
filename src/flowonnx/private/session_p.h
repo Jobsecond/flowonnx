@@ -7,6 +7,7 @@
 #include <flowonnx/session.h>
 #include <flowonnx/logger.h>
 
+#include "ort_header_fix_p.h"
 #include <onnxruntime_cxx_api.h>
 
 namespace flowonnx {
