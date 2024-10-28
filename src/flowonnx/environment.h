@@ -14,6 +14,9 @@ namespace flowonnx {
         Environment();
         ~Environment();
 
+        Environment(const Environment &) = delete;
+        Environment &operator=(const Environment &) = delete;
+
         static Environment *instance();
 
     public:

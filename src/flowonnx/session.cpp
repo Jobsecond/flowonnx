@@ -1,5 +1,7 @@
 #include "session.h"
 #include "session_p.h"
+#include "sessionsystem_p.h"
+#include "sessionimage_p.h"
 #include "executionprovider_p.h"
 
 #include <chrono>
@@ -13,9 +15,19 @@ namespace fs = std::filesystem;
 
 namespace flowonnx {
 
+    static SessionSystem *g_sessionSystem = nullptr;
+
+    SessionSystem::SessionSystem() {
+        assert(g_sessionSystem == nullptr);
+        g_sessionSystem = this;
+    }
+
+    SessionSystem::~SessionSystem() {
+        g_sessionSystem = nullptr;
+    }
+
     SessionSystem *SessionSystem::instance() {
-        static SessionSystem _instance;
-        return &_instance;
+        return g_sessionSystem;
     }
 
     Session::Session() : _impl(std::make_unique<Impl>()) {

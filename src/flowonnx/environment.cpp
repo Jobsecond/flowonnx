@@ -10,6 +10,7 @@
 
 #include "format.h"
 #include "logger.h"
+#include "sessionsystem_p.h"
 
 namespace fs = std::filesystem;
 
@@ -87,9 +88,12 @@ namespace flowonnx {
         void *hLibrary = nullptr;
         const OrtApi *ortApi = nullptr;
         const OrtApiBase *ortApiBase = nullptr;
+
+        SessionSystem sessionSystemInstance;
     };
 
     Environment::Environment() : _impl(std::make_unique<Impl>()) {
+        assert(g_env == nullptr);
         g_env = this;
     }
 
