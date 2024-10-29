@@ -3,6 +3,7 @@
 
 #include <map>
 #include <filesystem>
+#include <shared_mutex>
 
 namespace flowonnx {
 
@@ -18,9 +19,16 @@ public:
 
     ~SessionSystem();
 
+    static SessionSystem *instance();
+
+    bool addImage(const std::filesystem::path &path, SessionImage *image, bool overwrite = false);
+    bool addImage(std::filesystem::path &&path, SessionImage *image, bool overwrite = false);
+    bool removeImage(const std::filesystem::path &path);
+    SessionImage *getImage(const std::filesystem::path &path);
+private:
+    mutable std::shared_mutex mtx;
     std::map<std::filesystem::path, SessionImage *> sessionImageMap;
 
-    static SessionSystem *instance();
 };
 
 }

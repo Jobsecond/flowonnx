@@ -1,6 +1,6 @@
 #include "environment.h"
 
-#include <stdexcept>
+#include <cassert>
 
 #include "ort_header_fix_p.h"
 #include <onnxruntime_cxx_api.h>
@@ -139,9 +139,9 @@ namespace flowonnx {
         impl.deviceIndex = deviceIndex;
     }
 
-    std::string Environment::versionString() const {
+    const char *Environment::versionString() const {
         auto &impl = *_impl;
-        return impl.ortApiBase ? impl.ortApiBase->GetVersionString() : std::string();
+        return impl.ortApiBase ? impl.ortApiBase->GetVersionString() : "";
     }
 
 }

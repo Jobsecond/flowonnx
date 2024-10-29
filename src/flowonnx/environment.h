@@ -27,7 +27,7 @@ namespace flowonnx {
         ExecutionProvider executionProvider() const;
         int deviceIndex() const;
         void setDeviceIndex(int deviceIndex);
-        std::string versionString() const;
+        const char *versionString() const;
 
     protected:
         class Impl;

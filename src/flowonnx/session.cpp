@@ -4,8 +4,10 @@
 #include "sessionimage_p.h"
 #include "executionprovider_p.h"
 
+#include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <mutex>
 #include <sstream>
 #include <unordered_set>
 #include <flowonnx/environment.h>
@@ -28,6 +30,49 @@ namespace flowonnx {
 
     SessionSystem *SessionSystem::instance() {
         return g_sessionSystem;
+    }
+
+    bool SessionSystem::addImage(const std::filesystem::path &path, SessionImage *image, bool overwrite) {
+        std::unique_lock<std::shared_mutex> lock(mtx);
+
+        if (!overwrite && sessionImageMap.find(path) != sessionImageMap.end()) {
+            return false;
+        }
+
+        sessionImageMap[path] = image;
+        return true;
+    }
+
+    bool SessionSystem::addImage(std::filesystem::path &&path, SessionImage *image, bool overwrite) {
+        std::unique_lock<std::shared_mutex> lock(mtx);
+
+        if (!overwrite && sessionImageMap.find(path) != sessionImageMap.end()) {
+            return false;
+        }
+
+        sessionImageMap[std::move(path)] = image;
+        return true;
+    }
+
+    bool SessionSystem::removeImage(const std::filesystem::path &path) {
+        std::unique_lock<std::shared_mutex> lock(mtx);
+
+        if (auto it = sessionImageMap.find(path); it != sessionImageMap.end()) {
+            sessionImageMap.erase(it);
+            return true;  // Successfully removed
+        }
+
+        return false;  // Key does not exist
+    }
+
+    SessionImage* SessionSystem::getImage(const std::filesystem::path &path) {
+        std::shared_lock<std::shared_mutex> lock(mtx);
+
+        if (auto it = sessionImageMap.find(path);it != sessionImageMap.end()) {
+            return it->second;  // Return the pointer to the image
+        }
+
+        return nullptr;  // Key does not exist, return nullptr
     }
 
     Session::Session() : _impl(std::make_unique<Impl>()) {
@@ -77,14 +122,12 @@ namespace flowonnx {
             return false;
         }
 
-        auto mgr = SessionSystem::instance();
-        auto it = mgr->sessionImageMap.find(canonicalPath);
-        if (it == mgr->sessionImageMap.end()) {
+        if (auto image = SessionSystem::instance()->getImage(canonicalPath); image == nullptr) {
             LOG_DEBUG("flowonnx", "Session - The session image does not exist. Creating a new one...");
             impl.image = SessionImage::create(path, preferCpu, errorMessage);
         } else {
             LOG_DEBUG("flowonnx", "Session - The session image already exists. Increasing the reference count...");
-            impl.image = it->second;
+            impl.image = image;
             impl.image->ref();
         }
 

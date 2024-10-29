@@ -50,11 +50,9 @@ namespace flowonnx {
         auto filename = path.filename();
         LOG_DEBUG("flowonnx", "SessionImage [%1] - deref(), now ref count = %2", filename, count);
         if (count == 0) {
-            auto &sessionImageMap = SessionSystem::instance()->sessionImageMap;
-            auto it = sessionImageMap.find(path);
-            if (it != sessionImageMap.end()) {
-                LOG_DEBUG("flowonnx", "SessionImage [%1] - removing from session image map", filename);
-                sessionImageMap.erase(it);
+            LOG_DEBUG("flowonnx", "SessionImage [%1] - removing from session image map", filename);
+            if (!SessionSystem::instance()->removeImage(path)) {
+                LOG_ERROR("flowonnx", "SessionImage [%1] - removing failed: image does not exist in SessionSystem!", filename);
             }
             LOG_DEBUG("flowonnx", "SessionImage [%1] - delete", filename);
             delete this;
@@ -66,7 +64,7 @@ namespace flowonnx {
     inline bool SessionImage::init(bool preferCpu, std::string *errorMessage) {
         session = createOrtSession(env, path, preferCpu, errorMessage);
         if (session) {
-            SessionSystem::instance()->sessionImageMap[path] = this;
+            SessionSystem::instance()->addImage(path, this, true);
 
             Ort::AllocatorWithDefaultOptions allocator;
 
