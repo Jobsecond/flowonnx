@@ -36,17 +36,17 @@ target_link_directories(${PROJECT_NAME} PRIVATE ../../libs/onnxruntime/lib)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ORT_API_MANUAL_INIT)
 
 if(WIN32)
-    add_custom_command(TARGET ${PROJECT_NAME}
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND xcopy /Q /Y *.dll \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../bin\" > NUL
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
     )
 elseif(APPLE)
-    add_custom_command(TARGET ${PROJECT_NAME}
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND cp -f *.dylib \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../lib\"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
     )
 else()
-    add_custom_command(TARGET ${PROJECT_NAME}
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND cp -f *.so \"$<TARGET_FILE_DIR:${PROJECT_NAME}>/../lib\"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../libs/onnxruntime/lib"
     )
